@@ -1,0 +1,14 @@
+{
+  "name": "lark-issue-hub",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Bug Tracker 管理台：插件版本同步、多维表格自动化流程、飞书群机器人通知",
+  "scripts": {
+    "automations": "node scripts/fetch-automations.mjs",
+    "serve": "npx --yes serve ."
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

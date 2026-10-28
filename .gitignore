@@ -1,0 +1,12 @@
+node_modules/
+.npm-cache/
+*.log
+artifacts/
+
+# 本地敏感信息：绝不提交
+.env
+.env.*
+!.env.local.example
+
+# 脚本生成的自动化流程数据（含内部流程名）
+data/automations.json
