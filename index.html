@@ -3,106 +3,64 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bug Tracker 管理台</title>
+<title>Sigma 耳机 Bug Tracker</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-<header>
-  <div class="wrap">
-    <h1 id="pageTitle">Bug Tracker 管理台</h1>
-    <p class="sub">侧边栏插件版本 · 自动化流程 · 机器人通知</p>
-    <div class="toolbar">
+<div class="page">
+
+  <header class="head">
+    <h1>Sigma 耳机 Bug Tracker</h1>
+    <div class="head-actions">
       <button id="refresh" type="button">刷新</button>
-      <a id="repoLink" class="btn-ghost" href="#" target="_blank" rel="noreferrer">仓库</a>
-      <a id="pluginLink" class="btn-ghost" href="#" target="_blank" rel="noreferrer">打开插件</a>
-      <span id="updated" class="updated"></span>
     </div>
-  </div>
-</header>
+  </header>
 
-<main class="wrap">
   <section class="cards">
-    <article class="card">
-      <span class="card-label">仓库最新版本</span>
-      <strong id="repoVersion" class="card-value">—</strong>
-      <span id="repoBuild" class="card-hint">构建产物 dist/</span>
+    <article class="card accent-violet">
+      <span class="card-label">总数</span>
+      <strong id="cTotal" class="card-value">—</strong>
     </article>
-    <article class="card">
-      <span class="card-label">线上构建时间</span>
-      <strong id="liveVersion" class="card-value">—</strong>
-      <span id="liveHint" class="card-hint">读取中…</span>
+    <article class="card accent-red">
+      <span class="card-label">未解决</span>
+      <strong id="cUnresolved" class="card-value">—</strong>
     </article>
-    <article class="card card-state">
-      <span class="card-label">同步状态</span>
-      <strong id="state" class="card-value">—</strong>
-      <span id="stateHint" class="card-hint">—</span>
+    <article class="card accent-orange">
+      <span class="card-label">重新打开</span>
+      <strong id="cReopened" class="card-value">—</strong>
+    </article>
+    <article class="card accent-pink">
+      <span class="card-label">未解决与重新打开占比</span>
+      <strong id="cRatio" class="card-value">—</strong>
     </article>
   </section>
 
   <section class="panel">
-    <div class="panel-head">
-      <h2>自动化流程</h2>
-      <span id="autoMeta" class="muted">未加载</span>
-    </div>
-    <p class="muted">
-      由 <code>npm run automations</code> 生成到 <code>data/automations.json</code>。
-      飞书接口需要 <code>tenant_access_token</code>，浏览器里不能放 App Secret，所以由本地脚本取一次、页面只读结果。
-    </p>
-    <ul id="automations" class="auto-list"></ul>
-    <div class="actions">
-      <a id="baseLink" class="btn" href="#" target="_blank" rel="noreferrer">打开多维表格</a>
-      <button id="autoReload" type="button" class="btn-ghost">重新读取本地数据</button>
-    </div>
+    <h2>总数趋势</h2>
+    <div class="chart-box"><canvas id="chartTotal"></canvas></div>
   </section>
 
   <section class="panel">
-    <div class="panel-head"><h2>机器人通知</h2></div>
-    <p class="muted">
-      Webhook 只存在本机浏览器（localStorage），不写进仓库。发送由浏览器直连飞书，纯静态页即可。
-    </p>
-    <label class="field">
-      <span>群机器人 Webhook</span>
-      <input id="hookUrl" type="password" placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/..." autocomplete="off">
-    </label>
-    <label class="field">
-      <span>消息内容</span>
-      <textarea id="hookText" rows="3" placeholder="例如：今日未解决 12 条，重新打开 3 条"></textarea>
-    </label>
-    <div class="actions">
-      <button id="hookSend" type="button">发送到群</button>
-      <button id="hookSave" type="button" class="btn-ghost">保存 Webhook</button>
-      <button id="hookClear" type="button" class="btn-ghost">清除</button>
-      <span id="hookResult" class="muted"></span>
-    </div>
+    <h2>未解决 / 重新打开趋势</h2>
+    <div class="chart-box"><canvas id="chartOpen"></canvas></div>
   </section>
 
   <section class="panel">
-    <div class="panel-head">
-      <h2>最近提交</h2>
-      <span id="commitCount" class="muted"></span>
-    </div>
-    <ol id="commits" class="commits"></ol>
+    <h2>未解决占比趋势</h2>
+    <div class="chart-box"><canvas id="chartRatio"></canvas></div>
   </section>
 
   <section class="panel">
-    <div class="panel-head"><h2>获取最新构建</h2></div>
-    <div class="actions">
-      <a id="downloadLink" class="btn" href="#" target="_blank" rel="noreferrer">下载 main 源码包</a>
-      <a id="distLink" class="btn-ghost" href="#" target="_blank" rel="noreferrer">查看 dist</a>
-    </div>
-    <pre class="cmd">npm ci --ignore-scripts
-npm run build
-# node >= 24，输出 dist/</pre>
+    <h2>每日新增未解决</h2>
+    <div class="chart-box"><canvas id="chartNew"></canvas></div>
   </section>
 
+  <p id="meta" class="meta">数据加载中…</p>
   <p id="error" class="error" hidden></p>
-</main>
+</div>
 
-<footer class="wrap">
-  <span class="muted">纯静态页面，无后端。版本数据来自 GitHub 公开接口，自动化数据由本地脚本生成。</span>
-</footer>
-
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="./app.js"></script>
 </body>
 </html>

@@ -1,26 +1,16 @@
 # LarkIssueHub
 
-Bug Tracker 的本地管理台。纯静态页面 + 一个取数脚本，没有后端、没有云服务依赖。
+Sigma 耳机 Bug Tracker 的网页看板。纯静态页面 + 一个取数脚本，没有后端、不依赖云服务。
 
-## 能力
+页面形态与飞书侧边栏插件一致：顶部四个指标卡片，下面是趋势折线图。
 
-| 能力 | 实现方式 | 是否实时 |
-|---|---|---|
-| 插件版本同步检查 | 读 GitHub 公开接口 + 解析线上构建号 | 点刷新即可 |
-| 多维表格自动化流程 | 本地脚本取一次，写入 `data/automations.json` | 需重跑脚本 |
-| 飞书群机器人通知 | 浏览器直接 POST Webhook | 实时 |
+## 页面内容
 
-**不做的事**：不内嵌飞书文档界面（飞书禁止外部 iframe），只提供跳转按钮。
+- **指标卡片**：总数 / 未解决 / 重新打开 / 未解决与重新打开占比
+- **折线图**：总数趋势、未解决与重新打开趋势、未解决占比趋势、每日新增未解决
 
-## 为什么自动化流程要跑脚本
-
-飞书接口 `GET /open-apis/bitable/v1/apps/:app_token/workflows` 需要
-`tenant_access_token`，而换 token 必须用 `app_secret`。
-
-App Secret 一旦写进前端页面就等于公开，所以拆成两步：
-脚本在本机拿 token、请求、落盘；页面只读这份 JSON。
-
-接口只返回 `title` / `status` / `workflow_id`，**读不到触发条件和动作配置**。
+数据来自多维表格 `BugStats_History` 表，由本地脚本读取后写成 `data/stats.json`，
+页面只读这份 JSON，不发任何写请求。
 
 ## 快速开始
 
@@ -32,8 +22,6 @@ Copy-Item .env.local.example .env.local
 notepad .env.local
 ```
 
-填写：
-
 ```ini
 FEISHU_APP_ID=cli_aa8445104379dcb3
 FEISHU_APP_SECRET=你的应用密钥
@@ -41,60 +29,77 @@ FEISHU_WIKI_TOKEN=目标多维表格的 wiki 节点 token
 ```
 
 `FEISHU_WIKI_TOKEN` 与 `FEISHU_APP_TOKEN` 二选一：
-- 表在知识库里 → 用 `FEISHU_WIKI_TOKEN`（脚本自动换出 app_token）
+- 表在知识库里 → 填 `FEISHU_WIKI_TOKEN`（脚本自动换出 app_token）
 - 已知 app_token → 直接填 `FEISHU_APP_TOKEN`
 
-**`.env.local` 已被 `.gitignore` 忽略，不会进仓库。**
+`.env.local` 已被 `.gitignore` 忽略，不会进仓库。
 
-### 2. 取自动化流程
+### 2. 取数据
 
 ```powershell
-npm run automations
+npm run stats
 ```
 
-成功会打印条数并生成 `data/automations.json`。
+成功会打印天数与最新一天的数字，并生成 `data/stats.json`。
 
-### 3. 打开页面
+### 3. 打开
 
 ```powershell
 npm run serve
 ```
 
-然后访问命令输出的地址（一般是 http://localhost:3000）。
+访问命令输出的地址。直接双击 `index.html` 不行——`file://` 下浏览器会拦截本地 JSON 请求。
 
-直接双击 `index.html` 也能看版本信息，但 `file://` 下浏览器会拦截本地 JSON，
-自动化区块会显示「未生成数据」。
+## 其他脚本
 
-## 页面上改的东西在哪
+| 命令 | 作用 |
+|---|---|
+| `npm run stats` | 生成 `data/stats.json`，看板数据 |
+| `npm run automations` | 生成 `data/automations.json`，列出自动化流程 |
+| `npm run inspect` | 只读列出所有数据表与字段，用来核对表结构 |
+| `npm run serve` | 起本地静态服务 |
 
-- **仓库 / 插件 / 多维表格链接、线上地址** → `config.json`
-- **Webhook** → 只存在浏览器 localStorage，不落盘、不进仓库
-- **自动化数据** → `data/automations.json`，脚本生成，已被忽略
+## 数据说明
+
+`data/stats.json` 结构：
+
+```json
+{
+  "generatedAt": "2026-10-28T13:05:43.000Z",
+  "count": 166,
+  "latest": { "date": "2026-08-22", "total": 1250, "unresolved": 89,
+              "reopened": 9, "ratio": 7.8, "newUnresolved": 13, "resolved": 5 },
+  "series": [ { "date": "2026-03-09", "...": "..." } ]
+}
+```
+
+- 数据源表：`BugStats_History`（`tblWn6xhMFG67AfC`）
+- 数据截止到表里最后一条记录，不是实时值
+- 要更新就重跑 `npm run stats`，再点页面上的「刷新」
 
 ## 权限要求
 
 应用 [每日问题跟踪](https://open.feishu.cn/app/cli_aa8445104379dcb3/baseinfo) 需要：
 
-- 权限：`base:workflow:read` 或 `bitable:app`（任一）
+- 权限：`bitable:app` 或 `bitable:record:read`（读记录）+ `wiki:wiki:readonly`（解析 wiki 节点时）
 - 身份：是该多维表格的协作者
 
 报错对照：
 
 | 现象 | 原因 |
 |---|---|
-| `code=99991663` / 无 token | App ID 或 Secret 错误 |
-| `code=1254003` | app_token 不对，检查 wiki 解析结果 |
+| 缺 `FEISHU_APP_SECRET` | `.env.local` 没填或没保存 |
+| `code=99991663` | App ID / Secret 错误 |
 | 权限类报错 | 应用没开权限或不是协作者 |
 | wiki 接口报错 | 改用 `FEISHU_APP_TOKEN` 直接指定 |
 
 ## 安全
 
-- 仓库里**没有**任何 App Secret、Webhook、流程数据
-- `.env.local` 和 `data/automations.json` 都在 `.gitignore` 里
-- 页面不发任何写操作到飞书，除了你自己点「发送到群」
+- 仓库里没有任何 App Secret、Webhook、业务数据
+- `.env.local` 与 `data/*.json` 都在 `.gitignore` 里
+- 所有脚本只读，不写多维表格
 
 ## 已知限制
 
-- 飞书 webhook 一般不放行 CORS：消息能发出去，但浏览器读不到返回，
-  页面会提示「已提交，请到群里确认」。要确定性回执必须有后端转发。
-- GitHub 未登录接口限流 60 次/小时/IP，页面只在点刷新时请求。
+- 图表库走 CDN（jsdelivr），离线打不开就只能看到数字
+- 数据是快照，不是实时；要看最新值必须重跑脚本

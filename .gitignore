@@ -8,5 +8,5 @@ artifacts/
 .env.*
 !.env.local.example
 
-# 脚本生成的自动化流程数据（含内部流程名）
-data/automations.json
+# 脚本生成的数据（含内部业务数据）
+data/*.json
