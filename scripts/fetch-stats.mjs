@@ -3,7 +3,7 @@ import { mkdir, writeFile, rename } from 'node:fs/promises';
 import { resolve, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadEnv, connectFeishu } from '../lib/feishu-client.mjs';
-import { aggregateTransitions, currentStock } from '../lib/transitions.mjs';
+import { aggregateTransitions, currentStock, bugScope } from '../lib/transitions.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export async function collectStats() {
@@ -13,9 +13,11 @@ export async function collectStats() {
   console.log('2/4 分页读取状态变更日志');
   const records = await client.readAllRecords(env.FEISHU_LOG_TABLE_ID || 'tblrtjRhMURlSlOT', ['记录ID', 'Bug编号', '变更时间', '目标状态']);
   console.log('3/4 读取 Bug 主表当前库存');
-  const bugs = await client.readAllRecords(env.FEISHU_BUG_TABLE_ID || 'tbldjYSgIe55Qbcm', ['问题状态']);
+  const bugs = await client.readAllRecords(env.FEISHU_BUG_TABLE_ID || 'tbldjYSgIe55Qbcm', ['问题状态', '功能模块']);
+  const scope = bugScope(bugs);
+  if (scope.missingIds || scope.recordIds.size !== bugs.length) throw new Error('Bug 主表来源记录 ID 缺失或重复，未替换统计快照');
   const stock = currentStock(bugs, Date.now());
-  const data = { ...aggregateTransitions(records, { now: Date.now() }), stock };
+  const data = { ...aggregateTransitions(records, { now: Date.now(), bugRecords: bugs }), stock };
   const directory = resolve(ROOT, 'data');
   const destination = resolve(directory, 'stats.json');
   const temporary = resolve(directory, 'stats.next.json');
@@ -25,7 +27,8 @@ export async function collectStats() {
   await writeFile(temporary, JSON.stringify(data, null, 2) + '\n', 'utf8');
   await rename(temporary, destination);
   console.log(`4/4 完成：当前未解决+重新打开 ${stock.open}（${stock.unresolved}+${stock.reopened}），当前待验收 ${stock.pending}`);
-  console.log(`日志：扫描 ${data.diagnostics.rows} 行，有效 ${data.diagnostics.accepted} 条，重复 ${data.diagnostics.duplicate} 条`);
+  console.log(`模块过滤：GFPS、LDAC 排除 ${data.scope.excludedBugCount} 个主表 Bug、${data.diagnostics.excludedModule} 条有效转入日志；未关联主表 ${data.diagnostics.unmatchedSource} 条`);
+  console.log(`日志：扫描 ${data.diagnostics.rows} 行，范围内有效 ${data.diagnostics.included} 条，重复 ${data.diagnostics.duplicate} 条`);
   for (const day of data.series) {
     console.log(day.date + ' · ' + data.metrics.map(m => {
       const stat = day.metrics[m.key];

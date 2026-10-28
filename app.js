@@ -1,4 +1,4 @@
-import { QUALITY } from './lib/transitions.mjs';
+import { QUALITY, hasExpectedScope } from './lib/transitions.mjs';
 import { dashboardView, mixedDatasets, DISPLAY_START_DATE } from './lib/chart-data.mjs';
 const el = id => document.getElementById(id);
 const charts = new Map();
@@ -15,7 +15,7 @@ function numberText(stat) {
   return stat.items.map(item => item.bugNo || `序号缺失（${item.recordId}）`).join('、') || '无';
 }
 function summaryText(stat) {
-  if (stat.count === null) return '—（暂无日志，未验证）';
+  if (stat.count === null) return '—（未验证）';
   const numbers = numberText(stat);
   return stat.count === 0 ? '0（无）' : `${stat.count}（${numbers}）`;
 }
@@ -34,7 +34,7 @@ function renderStock() {
   }
   el('stockDate').textContent = stock.date + '（北京时间）';
   const at = new Date(stock.readAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false });
-  el('stockMeta').textContent = `Bug 主表当前存量 · 读取于 ${at}（北京时间），不是当日转入数量。`;
+  el('stockMeta').textContent = `Bug 主表当前存量 · 已排除 GFPS、LDAC · 读取于 ${at}（北京时间），不是当日转入数量。`;
 }
 function renderSelection() {
   const day = data.series.find(row => row.date === el('selectedDate').value);
@@ -106,6 +106,7 @@ async function loadStats() {
     if (!res.ok) throw new Error('missing');
     const next = await res.json();
     if (next.schemaVersion !== 2 || next.kind !== 'daily-incoming' || !next.series?.length || !next.stock) throw new Error('schema');
+    if (!hasExpectedScope(next)) throw new Error('scope');
     data = dashboardView(next);
     renderStock();
     if (!data.series.length) throw new Error('before-start');
@@ -123,6 +124,7 @@ async function loadStats() {
   } catch (error) {
     if (location.protocol === 'file:') showError('请用 npm run serve 启动页面，本地文件直开无法读取 JSON。');
     else if (error.message === 'before-start') showError(`暂无 ${DISPLAY_START_DATE} 起的变化记录，请更新本地数据。`);
+    else if (error.message === 'scope') showError('本地快照尚未按新规则排除 GFPS、LDAC，请重新运行 npm run stats（持续取数程序也需重启）后刷新。');
     else if (error.message === 'schema') showError('本地数据还是旧版总量统计，请先执行 npm run stats 重新生成三种状态转入数据。');
     else showError('读取数据失败，请先执行 npm run stats，再刷新页面。');
   } finally { el('refresh').disabled = false; loading = false; }
