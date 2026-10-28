@@ -1,4 +1,5 @@
 import { QUALITY } from './lib/transitions.mjs';
+import { dashboardView, mixedDatasets, DISPLAY_START_DATE } from './lib/chart-data.mjs';
 const el = id => document.getElementById(id);
 const charts = new Map();
 let data;
@@ -52,26 +53,26 @@ function selectDay(date) {
 function drawChart(metric) {
   charts.get(metric.key)?.destroy();
   const chart = new Chart(el(`chart-${metric.key}`), {
-    type: 'line',
+    type: 'bar',
     data: {
       labels: data.series.map(row => row.date),
-      datasets: [{ label: metric.label, data: data.series.map(row => row.metrics[metric.key].count), borderColor: metric.color, backgroundColor: metric.color + '18', borderWidth: 2, pointRadius: data.series.length <= 30 ? 4 : 2, pointHoverRadius: 6, pointHitRadius: 12, tension: 0, fill: true, spanGaps: false }],
+      datasets: mixedDatasets(metric, data.series),
     },
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
       interaction: { mode: 'index', intersect: false },
       onClick: (_event, active) => { if (active.length) selectDay(data.series[active[0].index].date); },
       plugins: {
-        legend: { display: false },
-        tooltip: { backgroundColor: '#111827', padding: 12, callbacks: {
+        legend: { display: true, position: 'top', align: 'end', labels: { color: '#aeb7cb', boxWidth: 12, boxHeight: 8, padding: 18, font: { size: 11 } } },
+        tooltip: { backgroundColor: '#171a28', borderColor: metric.color + '55', borderWidth: 1, padding: 12, filter: item => item.datasetIndex === 1, callbacks: {
           title: items => items.length ? data.series[items[0].dataIndex].date + '（北京时间）' : '',
           label: ctx => `${metric.label}：${summaryText(data.series[ctx.dataIndex].metrics[metric.key])}`,
           afterLabel: ctx => QUALITY[data.series[ctx.dataIndex].metrics[metric.key].quality],
         } },
       },
       scales: {
-        x: { grid: { display: false }, ticks: { color: '#8a9099', maxTicksLimit: 8, maxRotation: 0, callback: function(value) { return this.getLabelForValue(value).slice(5); } } },
-        y: { beginAtZero: true, suggestedMax: 1, border: { display: false }, title: { display: true, text: '转入数量', color: '#8a9099' }, grid: { color: '#eef0f4' }, ticks: { precision: 0, color: '#8a9099' } },
+        x: { offset: true, grid: { display: false }, border: { color: '#ffffff0d' }, ticks: { color: '#9faac0', maxTicksLimit: 8, maxRotation: 0, callback: function(value) { return this.getLabelForValue(value).slice(5); } } },
+        y: { beginAtZero: true, suggestedMax: 1, border: { display: false }, title: { display: true, text: '转入数量', color: '#9faac0' }, grid: { color: '#ffffff0a' }, ticks: { precision: 0, color: '#9faac0' } },
       },
     },
   });
@@ -105,8 +106,9 @@ async function loadStats() {
     if (!res.ok) throw new Error('missing');
     const next = await res.json();
     if (next.schemaVersion !== 2 || next.kind !== 'daily-incoming' || !next.series?.length || !next.stock) throw new Error('schema');
-    data = next;
+    data = dashboardView(next);
     renderStock();
+    if (!data.series.length) throw new Error('before-start');
     const selected = el('selectedDate').value;
     el('selectedDate').min = data.startDate;
     el('selectedDate').max = data.endDate;
@@ -115,11 +117,12 @@ async function loadStats() {
     for (const metric of data.metrics) renderTable(metric);
     if (typeof Chart === 'undefined') showError('图表库未加载；数量与序号已显示，请检查 CDN 网络后刷新。');
     else for (const metric of data.metrics) drawChart(metric);
-    el('coverage').textContent = '采集开始：' + data.metrics.map(m => `${m.status} ${m.start.replace('T', ' ').replace('+08:00', '')}`).join('；') + '（北京时间）。首日仅部分时段；暂无有效日志、覆盖未验证的日期显示「—」，不冒充 0。';
+    el('coverage').textContent = `图表和日期明细从 ${DISPLAY_START_DATE} 开始（北京时间）。柱和折线均表示每日去重转入数量；暂无有效日志、覆盖未验证的日期显示「—」，不填假数据。`;
     const when = new Date(data.generatedAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false });
     el('meta').textContent = `日志统计 ${data.startDate} ～ ${data.endDate} · 取数于 ${when}（北京时间）`;
   } catch (error) {
     if (location.protocol === 'file:') showError('请用 npm run serve 启动页面，本地文件直开无法读取 JSON。');
+    else if (error.message === 'before-start') showError(`暂无 ${DISPLAY_START_DATE} 起的变化记录，请更新本地数据。`);
     else if (error.message === 'schema') showError('本地数据还是旧版总量统计，请先执行 npm run stats 重新生成三种状态转入数据。');
     else showError('读取数据失败，请先执行 npm run stats，再刷新页面。');
   } finally { el('refresh').disabled = false; loading = false; }

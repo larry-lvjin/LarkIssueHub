@@ -9,6 +9,7 @@ const FILES = new Map([
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/style.css', ['style.css', 'text/css; charset=utf-8']],
   ['/lib/transitions.mjs', ['lib/transitions.mjs', 'text/javascript; charset=utf-8']],
+  ['/lib/chart-data.mjs', ['lib/chart-data.mjs', 'text/javascript; charset=utf-8']],
   ['/data/stats.json', ['data/stats.json', 'application/json; charset=utf-8']],
 ]);
 export function createStaticServer(root) {

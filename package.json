@@ -1,6 +1,6 @@
 {
   "name": "lark-issue-hub",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "description": "Sigma 耳机 Bug Tracker：每日转入重新打开、未解决、待验收的数量及 Bug 序号",

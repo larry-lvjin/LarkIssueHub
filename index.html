@@ -10,8 +10,12 @@
 <body>
 <main class="page">
   <header class="head">
-    <div><h1>Sigma 耳机 Bug Tracker</h1><p class="subtitle">每日状态转入 · 数量与 Bug 序号</p></div>
-    <button id="refresh" type="button">刷新数据</button>
+    <div class="brand-block">
+      <div class="brand-row"><span class="brand-mark" aria-hidden="true"></span><span class="eyebrow">LARK ISSUE HUB</span><span class="readonly-badge">只读看板</span></div>
+      <h1>Sigma 耳机 <span>Bug Tracker</span><i class="title-dot" aria-hidden="true"></i></h1>
+      <p class="subtitle">每日状态转入 · 数量与 Bug 序号</p>
+    </div>
+    <button id="refresh" type="button"><span aria-hidden="true">↻</span> 刷新数据</button>
   </header>
   <section class="stock-summary" aria-label="当前库存">
     <h2 class="stock-title">当前存量 <span id="stockDate" class="quality"></span></h2>
@@ -22,23 +26,23 @@
     <label for="selectedDate">变化明细日期（北京时间）</label>
     <input type="date" id="selectedDate" disabled>
   </div>
-  <p class="rule">下面三张图统计其他状态转入目标状态的 Bug；同一天、同一 Bug、同一目标状态只计一次，与顶部当前存量分开计算。</p>
+  <p class="rule">从 <strong>2026-10-28</strong> 开始，柱和折线都统计每天转入目标状态的 Bug；同一天、同一 Bug、同一目标状态只计一次。顶部显示主表当前存量。</p>
 
   <section class="panel" aria-labelledby="title-reopened">
     <h2 id="title-reopened"><span class="dot orange"></span>重新打开变化</h2>
-    <div class="chart-box"><canvas id="chart-reopened" role="img" aria-label="每日转入重新打开的 Bug 数量"></canvas></div>
+    <div class="chart-box"><canvas id="chart-reopened" role="img" aria-label="每日转入重新打开的 Bug 数量柱状折线图"></canvas></div>
     <div id="detail-reopened" class="detail" aria-live="polite"></div>
     <details><summary>每日数量和序号</summary><div class="table-wrap"><table><thead><tr><th>日期</th><th>数量</th><th>Bug 序号</th></tr></thead><tbody id="rows-reopened"></tbody></table></div></details>
   </section>
   <section class="panel" aria-labelledby="title-unresolved">
     <h2 id="title-unresolved"><span class="dot red"></span>未解决变化</h2>
-    <div class="chart-box"><canvas id="chart-unresolved" role="img" aria-label="每日转入未解决的 Bug 数量"></canvas></div>
+    <div class="chart-box"><canvas id="chart-unresolved" role="img" aria-label="每日转入未解决的 Bug 数量柱状折线图"></canvas></div>
     <div id="detail-unresolved" class="detail" aria-live="polite"></div>
     <details><summary>每日数量和序号</summary><div class="table-wrap"><table><thead><tr><th>日期</th><th>数量</th><th>Bug 序号</th></tr></thead><tbody id="rows-unresolved"></tbody></table></div></details>
   </section>
   <section class="panel" aria-labelledby="title-pending">
     <h2 id="title-pending"><span class="dot violet"></span>待验收变化</h2>
-    <div class="chart-box"><canvas id="chart-pending" role="img" aria-label="每日转入待验收的 Bug 数量"></canvas></div>
+    <div class="chart-box"><canvas id="chart-pending" role="img" aria-label="每日转入待验收的 Bug 数量柱状折线图"></canvas></div>
     <div id="detail-pending" class="detail" aria-live="polite"></div>
     <details><summary>每日数量和序号</summary><div class="table-wrap"><table><thead><tr><th>日期</th><th>数量</th><th>Bug 序号</th></tr></thead><tbody id="rows-pending"></tbody></table></div></details>
   </section>
