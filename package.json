@@ -1,14 +1,16 @@
 {
   "name": "lark-issue-hub",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "Sigma 耳机 Bug Tracker 看板：指标卡片与折线图",
+  "description": "Sigma 耳机 Bug Tracker：每日转入重新打开、未解决、待验收的数量及 Bug 序号",
   "scripts": {
     "stats": "node scripts/fetch-stats.mjs",
     "automations": "node scripts/fetch-automations.mjs",
     "inspect": "node scripts/inspect-base.mjs",
-    "serve": "npx --yes serve ."
+    "test": "node --test tests/*.test.mjs",
+    "start": "node scripts/start.mjs",
+    "serve": "node scripts/serve.mjs"
   },
   "engines": {
     "node": ">=20"

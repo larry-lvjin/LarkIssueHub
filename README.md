@@ -1,105 +1,108 @@
 # LarkIssueHub
 
-Sigma 耳机 Bug Tracker 的网页看板。纯静态页面 + 一个取数脚本，没有后端、不依赖云服务。
+Sigma 耳机 Bug Tracker 的只读本地看板。
 
-页面形态与飞书侧边栏插件一致：顶部四个指标卡片，下面是趋势折线图。
+顶部总览显示两个 **当前存量** 指标，来自 `固件端 bug` 主表当前问题状态：
 
-## 页面内容
+- **未解决 + 重新打开**：两种当前状态的 Bug 数量相加。
+- **待验收**：当前处于待验收状态的 Bug 数量。
 
-- **指标卡片**：总数 / 未解决 / 重新打开 / 未解决与重新打开占比
-- **折线图**：总数趋势、未解决与重新打开趋势、未解决占比趋势、每日新增未解决
+顶部标注主表读取日期和时间，不会随下方历史日期选择器改变。开启持续取数后约每60秒更新主表当前数量（不是瞬时推送）。
 
-数据来自多维表格 `BugStats_History` 表，由本地脚本读取后写成 `data/stats.json`，
-页面只读这份 JSON，不发任何写请求。
+下方只有三个 **每日状态转入** 折线图：
 
-## 快速开始
+1. 重新打开变化
+2. 未解决变化
+3. 待验收变化
 
-### 1. 准备凭据
+下方每个日期都有 **转入数量 + Bug 序号**。下方的图不是该状态存量，也不是状态数量的日净差；上方两个指标则是主表当前存量。
+
+## 统计口径
+
+以多维表格 `StatusChanges` 的 `记录ID`、`Bug编号`、`变更时间`、`目标状态` 为依据：
+
+- 日期按北京时间（Asia/Shanghai）划分。
+- 同一天、同一来源记录 ID、同一目标状态去重。
+- 同一 Bug 当天重复转入同一状态，只计 1；跨天各计 1。
+- 同一 Bug 当天分别转入未解决、重新打开，可在两个目标状态各计 1。
+- 来源记录 ID 决定去重，Bug 编号只用于展示；缺失/冲突序号会明确标注。
+- 只读自动化产生的目标状态日志；日志无上一状态字段，不能单独还原上一状态，不从当前库存或旧快照猜测转入。
+
+例如（口径示例，不是假定真实日志）：10 月 27 日只有 Bug 2245 转入重新打开，则该日显示 **1（2245）**。
+
+## 数据覆盖与零值
+
+本项目沿用原 v2 已确认的三条采集规则开始时间：
+
+| 目标状态 | 开始时间（北京时间） |
+|---|---|
+| 重新打开 | 2026-10-27 23:09:42 |
+| 未解决 | 2026-10-27 23:09:58 |
+| 待验收 | 2026-10-27 23:09:35 |
+
+- 首日只覆盖部分时段，不能当全天计数。
+- 无有效日志、采集覆盖待验证的日期为 `null`，页面显示「—」，折线不连此点。
+- 首次观测到该状态有效日志后的无记录日期，显示 0（按已读取日志）；今天注明截至取数时。
+- 本项目不保证自动化日志完整性，不补写飞书、不启用或修改自动化。
+- 不再使用 `BugStats_History` 的旧存量曲线推算状态转入。
+
+## 本地使用
+
+本机已有凭据文件时不要重新复制覆盖它。首次设置且文件不存在时：
 
 ```powershell
 cd D:\MyFile\CODE\VSCODE\LarkIssueHub
-Copy-Item .env.local.example .env.local
+if (!(Test-Path .env.local)) { Copy-Item .env.local.example .env.local }
 notepad .env.local
 ```
 
-```ini
-FEISHU_APP_ID=cli_aa8445104379dcb3
-FEISHU_APP_SECRET=你的应用密钥
-FEISHU_WIKI_TOKEN=目标多维表格的 wiki 节点 token
-```
+填写应用 App ID、App Secret，以及 `FEISHU_WIKI_TOKEN` 或 `FEISHU_APP_TOKEN`。App Secret 只留在本机，不贴聊天、不提交 Git。
 
-`FEISHU_WIKI_TOKEN` 与 `FEISHU_APP_TOKEN` 二选一：
-- 表在知识库里 → 填 `FEISHU_WIKI_TOKEN`（脚本自动换出 app_token）
-- 已知 app_token → 直接填 `FEISHU_APP_TOKEN`
-
-`.env.local` 已被 `.gitignore` 忽略，不会进仓库。
-
-### 2. 取数据
+推荐持续运行：
 
 ```powershell
-npm run stats
+npm start         # 本地只读取数 + 静态页面，默认 http://127.0.0.1:3000
 ```
 
-成功会打印天数与最新一天的数字，并生成 `data/stats.json`。
+每轮约60秒读取一次主表和状态变更日志；上一轮未结束时不会重叠执行。页面每30秒读取本地快照，重新回到页面时也会刷新。这个窗口关闭后不再取数，页面仍显示最后一次成功的读取时间。
 
-### 3. 打开
+也可只手动取一次：
 
 ```powershell
-npm run serve
+npm run stats     # 生成主表当前存量 + 按日转入统计的本地快照
+npm run serve     # 仅提供静态页面，不自动调用飞书
 ```
 
-访问命令输出的地址。直接双击 `index.html` 不行——`file://` 下浏览器会拦截本地 JSON 请求。
+页面上的「刷新数据」只重读本地 JSON，不直接调用飞书。持续取数失败时保留上一份快照与原时间，不会冒充已更新。
 
-## 其他脚本
+### 看数量和序号
 
-| 命令 | 作用 |
+- 日期选择器同步切换下方三个变化图的转入数量、序号；不改变顶部当天主表存量。
+- 悬停折线点可看 `数量（序号）`，点击点可选中该日期。
+- 每个图下直接显示选中日期的明细。
+- 展开「每日数量和序号」，查看完整日期表。
+
+### 其他命令
+
+| 命令 | 用途 |
 |---|---|
-| `npm run stats` | 生成 `data/stats.json`，看板数据 |
-| `npm run automations` | 生成 `data/automations.json`，列出自动化流程 |
-| `npm run inspect` | 只读列出所有数据表与字段，用来核对表结构 |
-| `npm run serve` | 起本地静态服务 |
+| `npm start` | 一键启动约每60秒的本地取数与静态页面 |
+| `npm test` | 库存和转入口径、去重、跨日、日志质量、分页与密钥 HTTP 隔离测试 |
+| `npm run automations` | 只读生成自动化流程清单；不放在这三个图中 |
+| `npm run inspect` | 只读查看数据表与字段 |
+| `node scripts/serve.mjs 3001` | 在端口 3001 打开静态页面 |
 
-## 数据说明
+## 权限及安全
 
-`data/stats.json` 结构：
+- 应用应具有多维表格读取权限，并能访问目标表；Wiki 链接解析需要知识库读取权限（填直接 app_token 可跳过解析）。
+- `FEISHU_LOG_TABLE_ID` 可通过本地凭据文件指定，默认使用已确认的 `StatusChanges` 表；`FEISHU_BUG_TABLE_ID` 默认使用 `固件端 bug` 主表。
+- 所有数据读取通过官方 OpenAPI；授权换取令牌和查询记录虽用 POST，均不修改飞书数据。
+- `.env.local` 与 `data/*.json` 都被 Git 忽略，不随代码推送。
+- 本地静态服务只允许展示文件，无法通过 HTTP 访问凭据、Git 目录或取数脚本。
+- API 错误只报告阶段、HTTP 状态和错误码，不输出凭据或原始返回内容。
+- 取数失败不替换已有快照，旧快照生成时间仍可见。
+- 图表库依赖 jsdelivr；CDN 不可访问时仍可看到数量与序号表。
 
-```json
-{
-  "generatedAt": "2026-10-28T13:05:43.000Z",
-  "count": 166,
-  "latest": { "date": "2026-08-22", "total": 1250, "unresolved": 89,
-              "reopened": 9, "ratio": 7.8, "newUnresolved": 13, "resolved": 5 },
-  "series": [ { "date": "2026-03-09", "...": "..." } ]
-}
-```
+## 本地快照格式
 
-- 数据源表：`BugStats_History`（`tblWn6xhMFG67AfC`）
-- 数据截止到表里最后一条记录，不是实时值
-- 要更新就重跑 `npm run stats`，再点页面上的「刷新」
-
-## 权限要求
-
-应用 [每日问题跟踪](https://open.feishu.cn/app/cli_aa8445104379dcb3/baseinfo) 需要：
-
-- 权限：`bitable:app` 或 `bitable:record:read`（读记录）+ `wiki:wiki:readonly`（解析 wiki 节点时）
-- 身份：是该多维表格的协作者
-
-报错对照：
-
-| 现象 | 原因 |
-|---|---|
-| 缺 `FEISHU_APP_SECRET` | `.env.local` 没填或没保存 |
-| `code=99991663` | App ID / Secret 错误 |
-| 权限类报错 | 应用没开权限或不是协作者 |
-| wiki 接口报错 | 改用 `FEISHU_APP_TOKEN` 直接指定 |
-
-## 安全
-
-- 仓库里没有任何 App Secret、Webhook、业务数据
-- `.env.local` 与 `data/*.json` 都在 `.gitignore` 里
-- 所有脚本只读，不写多维表格
-
-## 已知限制
-
-- 图表库走 CDN（jsdelivr），离线打不开就只能看到数字
-- 数据是快照，不是实时；要看最新值必须重跑脚本
+`data/stats.json` 的 `stock` 包含当前库存 `open`（未解决+重新打开）、`pending`（待验收）、主表读取日期和时间；这两个指标不从转入日志计算。`schemaVersion` 为 2、`kind` 为 `daily-incoming`。`series` 按日期排列，各日期的 `metrics` 包含 `reopened`、`unresolved`、`pending`，每项记录 `count`、`quality` 和去重后的 `items`（Bug 编号、来源记录 ID、首次/最后时间、日志条数）。数据属于内部业务信息，不能提交到公开仓库。

@@ -8,59 +8,46 @@
 <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-<div class="page">
-
+<main class="page">
   <header class="head">
-    <h1>Sigma 耳机 Bug Tracker</h1>
-    <div class="head-actions">
-      <button id="refresh" type="button">刷新</button>
-    </div>
+    <div><h1>Sigma 耳机 Bug Tracker</h1><p class="subtitle">每日状态转入 · 数量与 Bug 序号</p></div>
+    <button id="refresh" type="button">刷新数据</button>
   </header>
-
-  <section class="cards">
-    <article class="card accent-violet">
-      <span class="card-label">总数</span>
-      <strong id="cTotal" class="card-value">—</strong>
-    </article>
-    <article class="card accent-red">
-      <span class="card-label">未解决</span>
-      <strong id="cUnresolved" class="card-value">—</strong>
-    </article>
-    <article class="card accent-orange">
-      <span class="card-label">重新打开</span>
-      <strong id="cReopened" class="card-value">—</strong>
-    </article>
-    <article class="card accent-pink">
-      <span class="card-label">未解决与重新打开占比</span>
-      <strong id="cRatio" class="card-value">—</strong>
-    </article>
+  <section class="stock-summary" aria-label="当前库存">
+    <h2 class="stock-title">当前存量 <span id="stockDate" class="quality"></span></h2>
+    <div class="cards" id="cards" aria-live="polite"></div>
+    <p id="stockMeta" class="meta"></p>
   </section>
+  <div class="controls">
+    <label for="selectedDate">变化明细日期（北京时间）</label>
+    <input type="date" id="selectedDate" disabled>
+  </div>
+  <p class="rule">下面三张图统计其他状态转入目标状态的 Bug；同一天、同一 Bug、同一目标状态只计一次，与顶部当前存量分开计算。</p>
 
-  <section class="panel">
-    <h2>总数趋势</h2>
-    <div class="chart-box"><canvas id="chartTotal"></canvas></div>
+  <section class="panel" aria-labelledby="title-reopened">
+    <h2 id="title-reopened"><span class="dot orange"></span>重新打开变化</h2>
+    <div class="chart-box"><canvas id="chart-reopened" role="img" aria-label="每日转入重新打开的 Bug 数量"></canvas></div>
+    <div id="detail-reopened" class="detail" aria-live="polite"></div>
+    <details><summary>每日数量和序号</summary><div class="table-wrap"><table><thead><tr><th>日期</th><th>数量</th><th>Bug 序号</th></tr></thead><tbody id="rows-reopened"></tbody></table></div></details>
   </section>
-
-  <section class="panel">
-    <h2>未解决 / 重新打开趋势</h2>
-    <div class="chart-box"><canvas id="chartOpen"></canvas></div>
+  <section class="panel" aria-labelledby="title-unresolved">
+    <h2 id="title-unresolved"><span class="dot red"></span>未解决变化</h2>
+    <div class="chart-box"><canvas id="chart-unresolved" role="img" aria-label="每日转入未解决的 Bug 数量"></canvas></div>
+    <div id="detail-unresolved" class="detail" aria-live="polite"></div>
+    <details><summary>每日数量和序号</summary><div class="table-wrap"><table><thead><tr><th>日期</th><th>数量</th><th>Bug 序号</th></tr></thead><tbody id="rows-unresolved"></tbody></table></div></details>
   </section>
-
-  <section class="panel">
-    <h2>未解决占比趋势</h2>
-    <div class="chart-box"><canvas id="chartRatio"></canvas></div>
+  <section class="panel" aria-labelledby="title-pending">
+    <h2 id="title-pending"><span class="dot violet"></span>待验收变化</h2>
+    <div class="chart-box"><canvas id="chart-pending" role="img" aria-label="每日转入待验收的 Bug 数量"></canvas></div>
+    <div id="detail-pending" class="detail" aria-live="polite"></div>
+    <details><summary>每日数量和序号</summary><div class="table-wrap"><table><thead><tr><th>日期</th><th>数量</th><th>Bug 序号</th></tr></thead><tbody id="rows-pending"></tbody></table></div></details>
   </section>
-
-  <section class="panel">
-    <h2>每日新增未解决</h2>
-    <div class="chart-box"><canvas id="chartNew"></canvas></div>
-  </section>
-
-  <p id="meta" class="meta">数据加载中…</p>
-  <p id="error" class="error" hidden></p>
-</div>
-
+  <p id="coverage" class="coverage"></p>
+  <p id="meta" class="meta">正在读取本地状态日志统计…</p>
+  <p class="meta">运行 npm start 持续取数（约每60秒），页面每30秒刷新快照。也可执行 npm run stats 后手动刷新。点击图上的日期点可查看当天序号。</p>
+  <p id="error" class="error" role="alert" hidden></p>
+</main>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="./app.js"></script>
+<script type="module" src="./app.js"></script>
 </body>
 </html>
